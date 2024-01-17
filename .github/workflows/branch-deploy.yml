@@ -1,0 +1,39 @@
+name: branch-deploy
+
+on:
+  issue_comment:
+    types: [created]
+
+# Permissions needed for reacting and adding comments for IssueOps commands
+permissions:
+  pull-requests: write
+  deployments: write
+  contents: write
+  checks: read
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request }} # only run on pull request comments
+
+    steps:
+      # The branch-deploy Action
+      - name: branch-deploy
+        id: branch-deploy
+        uses: github/branch-deploy@vX.X.X
+
+        # If the branch-deploy Action was triggered, checkout our branch
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch-deploy.outputs.ref }}
+
+        # If the branch-deploy Action was triggered, run the noop deployment (i.e. '.noop')
+      - name: noop deploy
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop == 'true' }}
+        run: echo "Noop deployed!"
+
+        # If the branch-deploy Action was triggered, run the real deployment (i.e. '.deploy')
+      - name: deploy
+        if: ${{ steps.branch-deploy.outputs.continue == 'true' && steps.branch-deploy.outputs.noop != 'true' }}
+        run: echo "Production deployed!"
